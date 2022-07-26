@@ -1,4 +1,9 @@
 # Squonk2 Python Command-Line Tools
+
+[![Latest Release](https://gitlab.com/informaticsmatters/squonk2-python-cl-tools/-/badges/release.svg)](https://gitlab.com/informaticsmatters/squonk2-python-cl-tools/-/releases)
+
+[![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
+
 A collection of Python-based Command line tools to help manage and maintain
 a Squonk2 deployment. The tools are generally used for administrative purposes.
 
