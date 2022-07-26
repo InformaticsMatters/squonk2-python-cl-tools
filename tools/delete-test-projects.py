@@ -1,4 +1,6 @@
 #!/usr/bin/env python
+# pylint: disable=invalid-name
+
 """Deletes projects in the DM created by a built-in test user.
 """
 import argparse

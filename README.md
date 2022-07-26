@@ -36,6 +36,7 @@ display the tool's help.
 ## Tools
 You should find the following tools in this repository: -
 
+- `delete-all-instances`
 - `delete-test-projects`
 
 ---
