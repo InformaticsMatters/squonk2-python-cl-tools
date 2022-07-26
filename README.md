@@ -1,6 +1,6 @@
 # Squonk2 Python Command-Line Tools
 
-[![Latest Release](https://gitlab.com/informaticsmatters/squonk2-python-cl-tools/-/badges/release.svg)](https://gitlab.com/informaticsmatters/squonk2-python-cl-tools/-/releases)
+![GitHub tag (latest SemVer)](https://img.shields.io/github/v/tag/informaticsmatters/squonk2-python-cl-tools)
 
 [![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
 
