@@ -12,11 +12,14 @@ prior to a major upgrade.
 """
 import argparse
 from typing import Dict, List, Optional, Tuple
+import urllib3
 
 from common import Env, get_env
 
 from squonk2.auth import Auth
 from squonk2.dm_api import DmApi, DmApiRv
+
+urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
 
 def main(c_args: argparse.Namespace) -> None:
