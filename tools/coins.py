@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-"""Calculates an Invoice for an AS Product.
+"""Calculates Coin charges for an AS Product.
 """
 import argparse
 from decimal import Decimal
@@ -183,7 +183,8 @@ if __name__ == "__main__":
 
     # Parse command line arguments
     parser = argparse.ArgumentParser(
-        description="Calculates a Product's Invoice (actual and predicted)"
+        prog="coins",
+        description="Calculates a Product's Coin Charges (actual and predicted)"
     )
     parser.add_argument('product', type=str, help='The Product UUID')
     args: argparse.Namespace = parser.parse_args()
