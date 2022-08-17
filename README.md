@@ -41,6 +41,7 @@ display the tool's help.
 ## Tools
 You should find the following tools in this repository: -
 
+- `coins`
 - `delete-all-instances`
 - `delete-old-instances`
 - `delete-test-projects`
