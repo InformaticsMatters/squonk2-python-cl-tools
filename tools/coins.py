@@ -37,6 +37,9 @@ def main(c_args: argparse.Namespace) -> None:
     # This gives us the product's allowance, limit and overspend multipliers
     p_rv: AsApiRv = AsApi.get_product(token, product_id=args.product)
     assert p_rv.success
+    if args.verbose:
+        pprint(p_rv.msg)
+
     allowance: Decimal = Decimal(p_rv.msg["product"]["coins"]["allowance"])
     allowance_multiplier: Decimal = Decimal(p_rv.msg["product"]["coins"]["allowance_multiplier"])
     limit: Decimal = Decimal(p_rv.msg["product"]["coins"]["limit"])
@@ -56,8 +59,8 @@ def main(c_args: argparse.Namespace) -> None:
     assert pc_rv.success
     invoice["From"] = pc_rv.msg["from"]
     invoice["Until"] = pc_rv.msg["until"]
-
-#    pprint(pc_rv.msg)
+    if args.verbose:
+        pprint(pc_rv.msg)
 
     # Accumulate all the storage costs
     # (excluding the current which will be interpreted as the "burn rate")
@@ -187,6 +190,11 @@ if __name__ == "__main__":
         description="Calculates a Product's Coin Charges (actual and predicted)"
     )
     parser.add_argument('product', type=str, help='The Product UUID')
+    parser.add_argument(
+        '--verbose',
+        help='Set to print extra information',
+        action='store_true',
+    )
     args: argparse.Namespace = parser.parse_args()
 
     main(args)
