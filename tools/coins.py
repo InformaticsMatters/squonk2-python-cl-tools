@@ -40,6 +40,8 @@ def main(c_args: argparse.Namespace) -> None:
     if args.verbose:
         pprint(p_rv.msg)
 
+    product_id: str = p_rv.msg["product"]["product"]["id"]
+    product_name: str = p_rv.msg["product"]["product"]["name"]
     allowance: Decimal = Decimal(p_rv.msg["product"]["coins"]["allowance"])
     allowance_multiplier: Decimal = Decimal(p_rv.msg["product"]["coins"]["allowance_multiplier"])
     limit: Decimal = Decimal(p_rv.msg["product"]["coins"]["limit"])
@@ -47,18 +49,9 @@ def main(c_args: argparse.Namespace) -> None:
 
     remaining_days: int = p_rv.msg["product"]["coins"]["remaining_days"]
 
-    invoice: Dict[str, Any] = {
-        "Allowance": str(allowance),
-        "Allowance Multiplier": str(allowance_multiplier),
-        "Limit": str(limit),
-        "Overspend Multiplier": str(overspend_multiplier),
-    }
-
     # Get the product's charges...
     pc_rv: AsApiRv = AsApi.get_product_charges(token, product_id=args.product)
     assert pc_rv.success
-    invoice["From"] = pc_rv.msg["from"]
-    invoice["Until"] = pc_rv.msg["until"]
     if args.verbose:
         pprint(pc_rv.msg)
 
@@ -84,16 +77,24 @@ def main(c_args: argparse.Namespace) -> None:
                 total_processing_coins += Decimal(item["coins"])
                 num_processing_charges += 1
 
-    # Accumulate processing coins
-    total_processing_coins: Decimal = Decimal()
-
-    invoice["Billing Day"] = p_rv.msg["product"]["coins"]["billing_day"]
-    invoice["Remaining Days"] = remaining_days
-    invoice["Current Burn Rate"] = str(burn_rate)
-    invoice["Number of Storage Charges"] = num_storage_charges
-    invoice["Accrued Storage Coins"] = str(total_storage_coins)
-    invoice["Number of Processing Charges"] = num_processing_charges
-    invoice["Accrued Processing Coins"] = str(total_processing_coins)
+    invoice: Dict[str, Any] = {
+        "Product": product_id,
+        "Product Name": product_name,
+        "Claim ID": pc_rv.msg.get("claim_id", "Unclaimed"),
+        "Claim Name": pc_rv.msg.get("claim_name", "Undefined"),
+        "Allowance": str(allowance),
+        "Allowance Multiplier": str(allowance_multiplier),
+        "Limit": str(limit),
+        "Overspend Multiplier": str(overspend_multiplier),
+        "From": pc_rv.msg["from"], "Until": pc_rv.msg["until"],
+        "Billing Day": p_rv.msg["product"]["coins"]["billing_day"],
+        "Remaining Days": remaining_days,
+        "Current Burn Rate": str(burn_rate),
+        "Number of Storage Charges": num_storage_charges,
+        "Accrued Storage Coins": str(total_storage_coins),
+        "Number of Processing Charges": num_processing_charges,
+        "Accrued Processing Coins": str(total_processing_coins),
+    }
 
     total_coins: Decimal = total_storage_coins + total_processing_coins
 
