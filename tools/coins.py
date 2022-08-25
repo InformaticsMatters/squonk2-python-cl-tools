@@ -2,12 +2,14 @@
 """Calculates Coin charges for an AS Product.
 """
 import argparse
-from decimal import Decimal
 from collections import namedtuple
+from decimal import Decimal
+import sys
 from typing import Any, Dict, Optional
 import urllib3
 
 from rich.pretty import pprint
+from rich.console import Console
 from squonk2.auth import Auth
 from squonk2.as_api import AsApi, AsApiRv
 
@@ -16,11 +18,14 @@ from common import Env, get_env
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
 AdjustedCoins: namedtuple = namedtuple("AdjustedCoins",
-                                       ["coins", "fc", "ac", "aac", "lc", "alc"])
+                                       ["coins", "fc", "ac", "aac"])
 
 
 def main(c_args: argparse.Namespace) -> None:
     """Main function."""
+
+    console = Console()
+
     env: Optional[Env] = get_env()
     if not env:
         return
@@ -36,7 +41,10 @@ def main(c_args: argparse.Namespace) -> None:
     # Get the product details.
     # This gives us the product's allowance, limit and overspend multipliers
     p_rv: AsApiRv = AsApi.get_product(token, product_id=args.product)
-    assert p_rv.success
+    if not p_rv.success:
+        console.log(p_rv.msg)
+        console.log(f"[bold red]ERROR[/bold red] Failed to get [blue]{args.product}[/blue]")
+        sys.exit(1)
     if args.verbose:
         pprint(p_rv.msg)
 
@@ -45,13 +53,15 @@ def main(c_args: argparse.Namespace) -> None:
     allowance: Decimal = Decimal(p_rv.msg["product"]["coins"]["allowance"])
     allowance_multiplier: Decimal = Decimal(p_rv.msg["product"]["coins"]["allowance_multiplier"])
     limit: Decimal = Decimal(p_rv.msg["product"]["coins"]["limit"])
-    overspend_multiplier: Decimal = Decimal(p_rv.msg["product"]["coins"]["overspend_multiplier"])
 
     remaining_days: int = p_rv.msg["product"]["coins"]["remaining_days"]
 
     # Get the product's charges...
     pc_rv: AsApiRv = AsApi.get_product_charges(token, product_id=args.product)
-    assert pc_rv.success
+    if not pc_rv.success:
+        console.log(pc_rv.msg)
+        console.log(f"[bold red]ERROR[/bold red] Failed to get [blue]{args.product}[/blue]")
+        sys.exit(1)
     if args.verbose:
         pprint(pc_rv.msg)
 
@@ -70,12 +80,16 @@ def main(c_args: argparse.Namespace) -> None:
 
     # Accumulate all the processing costs
     num_processing_charges: int = 0
-    total_processing_coins: Decimal = Decimal()
+    total_uncommitted_processing_coins: Decimal = Decimal()
+    total_committed_processing_coins: Decimal = Decimal()
     if pc_rv.msg["processing_charges"]:
-        for merchant in pc_rv.msg["processing_charges"]:
-            for item in merchant["items"]:
-                total_processing_coins += Decimal(item["coins"])
-                num_processing_charges += 1
+        for mp_charge in pc_rv.msg["processing_charges"]:
+            charge_coins: Decimal = Decimal(mp_charge["charge"]["coins"])
+            if "closed" in mp_charge:
+                total_committed_processing_coins += charge_coins
+            else:
+                total_uncommitted_processing_coins += charge_coins
+            num_processing_charges += 1
 
     invoice: Dict[str, Any] = {
         "Product": product_id,
@@ -85,38 +99,34 @@ def main(c_args: argparse.Namespace) -> None:
         "Allowance": str(allowance),
         "Allowance Multiplier": str(allowance_multiplier),
         "Limit": str(limit),
-        "Overspend Multiplier": str(overspend_multiplier),
         "From": pc_rv.msg["from"], "Until": pc_rv.msg["until"],
         "Billing Day": p_rv.msg["product"]["coins"]["billing_day"],
         "Remaining Days": remaining_days,
         "Current Burn Rate": str(burn_rate),
         "Number of Storage Charges": num_storage_charges,
-        "Accrued Storage Coins": str(total_storage_coins),
         "Number of Processing Charges": num_processing_charges,
-        "Accrued Processing Coins": str(total_processing_coins),
+        "Committed Storage Coins": str(total_storage_coins),
+        "Committed Processing Coins": str(total_committed_processing_coins),
+        "Uncommitted Processing Coins": str(total_uncommitted_processing_coins),
     }
 
-    total_coins: Decimal = total_storage_coins + total_processing_coins
+    total_coins: Decimal = total_storage_coins + total_committed_processing_coins
 
     ac: AdjustedCoins = _calculate_adjusted_coins(
         total_coins,
         allowance,
         allowance_multiplier,
-        limit,
-        overspend_multiplier
     )
 
-    invoice["Overspend Adjustment"] = {
-        "Coins (Total Raw)": f"{total_storage_coins} + {total_processing_coins} = {total_coins}",
+    invoice["Allowance Adjustment"] = {
+        "Coins (Total Raw)": f"{total_storage_coins} + {total_committed_processing_coins} = {total_coins}",
         "Coins (Penalty Free)": str(ac.fc),
         "Coins (In Allowance Band)": str(ac.ac),
         "Coins (Allowance Charge)": f"{ac.ac} x {allowance_multiplier} = {ac.aac}",
-        "Coins (Above Limit)": str(ac.lc),
-        "Coins (Overspend Charge)": f"{ac.lc} x {overspend_multiplier} = {ac.alc}",
-        "Coins (Adjusted)": f"{ac.fc} + {ac.aac} + {ac.alc} = {ac.coins}",
+        "Coins (Adjusted)": f"{ac.fc} + {ac.aac} = {ac.coins}",
     }
 
-    additional_coins: Decimal = burn_rate * remaining_days
+    additional_coins: Decimal = total_uncommitted_processing_coins + burn_rate * remaining_days
     predicted_total_coins: Decimal = total_coins
     zero: Decimal = Decimal()
     if remaining_days > 0:
@@ -126,20 +136,16 @@ def main(c_args: argparse.Namespace) -> None:
             p_ac: AdjustedCoins = _calculate_adjusted_coins(
                 predicted_total_coins,
                 allowance,
-                allowance_multiplier,
-                limit,
-                overspend_multiplier)
+                allowance_multiplier)
 
-            invoice["Predicted Overspend Adjustment"] = {
+            invoice["Prediction"] = {
                 "Coins (Burn Rate)": str(burn_rate),
-                "Coins (Additional Spend)": f"{remaining_days} x {burn_rate} = {additional_coins}",
+                "Coins (Additional Spend)": f"{total_uncommitted_processing_coins} + {remaining_days} x {burn_rate} = {additional_coins}",
                 "Coins (Total Raw)": f"{total_coins} + {additional_coins} = {predicted_total_coins}",
                 "Coins (Penalty Free)": str(p_ac.fc),
                 "Coins (In Allowance Band)": str(p_ac.ac),
                 "Coins (Allowance Charge)": f"{p_ac.ac} x {allowance_multiplier} = {p_ac.aac}",
-                "Coins (Above Limit)": str(p_ac.lc),
-                "Coins (Overspend Charge)": f"{p_ac.lc} x {overspend_multiplier} = {p_ac.alc}",
-                "Coins (Adjusted)": f"{p_ac.fc} + {p_ac.aac} + {p_ac.alc} = {p_ac.coins}",
+                "Coins (Adjusted)": f"{p_ac.fc} + {p_ac.aac} = {p_ac.coins}",
             }
 
     # Now just pre-tty-print the invoice
@@ -148,9 +154,7 @@ def main(c_args: argparse.Namespace) -> None:
 
 def _calculate_adjusted_coins(total_coins: Decimal,
                               allowance: Decimal,
-                              allowance_multiplier: Decimal,
-                              limit: Decimal,
-                              overspend_multiplier: Decimal) -> AdjustedCoins:
+                              allowance_multiplier: Decimal) -> AdjustedCoins:
     """Adjust total based on allowance and limit multipliers.
     Coins between the allowance and limit use the allowance multiplier.
     Coins above the limit use the limit multiplier.
@@ -164,23 +168,16 @@ def _calculate_adjusted_coins(total_coins: Decimal,
     limit_coins: Decimal = Decimal()
     adjusted_limit_coins: Decimal = Decimal()
 
-    allowance_band: Decimal = limit - allowance
-
     if total_coins > allowance:
-        allowance_coins = min(total_coins - allowance, allowance_band)
+        allowance_coins = max(total_coins - allowance, Decimal())
         adjusted_allowance_coins = allowance_coins * allowance_multiplier
-    if total_coins > limit:
-        limit_coins = total_coins - limit
-        adjusted_limit_coins = limit_coins * overspend_multiplier
 
-    adjusted_coins: Decimal = free_coins + adjusted_allowance_coins + adjusted_limit_coins
+    adjusted_coins: Decimal = free_coins + adjusted_allowance_coins
 
     return AdjustedCoins(coins=adjusted_coins,
                          fc=free_coins,
                          ac=allowance_coins,
-                         aac=adjusted_allowance_coins,
-                         lc=limit_coins,
-                         alc=adjusted_limit_coins)
+                         aac=adjusted_allowance_coins)
 
 
 if __name__ == "__main__":
