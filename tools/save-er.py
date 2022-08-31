@@ -54,6 +54,11 @@ def main(c_args: argparse.Namespace) -> None:
     header += "\n\n"
 
     num_rates: int = len(er_rv.msg['exchange_rates'])
+    # Before saving, remove the 'id' from each rate
+    # - this is distracting and of no real use
+    for rate in er_rv.msg['exchange_rates']:
+        del rate['id']
+
     rates: str = yaml.dump(er_rv.msg['exchange_rates'], default_flow_style=False)
     Path(filename).write_text(header + rates, encoding='utf8')
 
