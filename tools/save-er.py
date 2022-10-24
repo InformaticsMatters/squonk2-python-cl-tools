@@ -72,7 +72,7 @@ if __name__ == "__main__":
 
     # Parse command line arguments
     parser = argparse.ArgumentParser(
-        prog="coins",
+        prog="save-er",
         description="Saves existing exchange rates (to a YAML file)"
     )
     parser.add_argument('file', type=str, help='The destination file')
