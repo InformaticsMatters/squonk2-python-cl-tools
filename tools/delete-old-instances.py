@@ -15,24 +15,23 @@ import urllib3
 from dateutil.parser import parse
 from squonk2.auth import Auth
 from squonk2.dm_api import DmApi, DmApiRv
-
-from common import Env, get_env
+from squonk2.environment import Environment
 
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
 
 def main(c_args: argparse.Namespace) -> None:
 
-    env: Optional[Env] = get_env()
-    if not env:
-        return
+    _ = Environment.load()
+    env: Environment = Environment(c_args.environment)
+    DmApi.set_api_url(env.dm_api)
 
     token: str = Auth.get_access_token(
         keycloak_url=env.keycloak_url,
         keycloak_realm=env.keycloak_realm,
         keycloak_client_id=env.keycloak_dm_client_id,
-        username=env.keycloak_user,
-        password=env.keycloak_user_password,
+        username=env.admin_user,
+        password=env.admin_password,
     )
 
     # To see everything we need to become admin...
@@ -88,6 +87,7 @@ if __name__ == '__main__':
     # Build a command-line parser and parse it...
     parser = argparse.ArgumentParser(
         description='Delete All Old DM Project Instances')
+    parser.add_argument('environment', type=str, help='The environment name')
     parser.add_argument(
         '--age',
         nargs='?',

@@ -12,8 +12,7 @@ from rich.pretty import pprint
 from rich.console import Console
 from squonk2.auth import Auth
 from squonk2.as_api import AsApi, AsApiRv
-
-from common import Env, get_env
+from squonk2.environment import Environment
 
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
@@ -26,16 +25,16 @@ def main(c_args: argparse.Namespace) -> None:
 
     console = Console()
 
-    env: Optional[Env] = get_env()
-    if not env:
-        return
+    _ = Environment.load()
+    env: Environment = Environment(c_args.environment)
+    AsApi.set_api_url(env.as_api)
 
     token: str = Auth.get_access_token(
         keycloak_url=env.keycloak_url,
         keycloak_realm=env.keycloak_realm,
         keycloak_client_id=env.keycloak_as_client_id,
-        username=env.keycloak_user,
-        password=env.keycloak_user_password,
+        username=env.admin_user,
+        password=env.admin_password,
     )
 
     # Get the product details.
@@ -187,6 +186,7 @@ if __name__ == "__main__":
         prog="coins",
         description="Calculates a Product's Coin Charges (actual and predicted)"
     )
+    parser.add_argument('environment', type=str, help='The environment name')
     parser.add_argument('product', type=str, help='The Product UUID')
     parser.add_argument(
         '--verbose',

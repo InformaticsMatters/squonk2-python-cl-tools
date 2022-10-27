@@ -13,12 +13,13 @@ set of examples so that users can create their own utilities.
 >   Most tools need to be executed by a user with admin privileges.
 
 ## Usage
-You need to create a number of environment variables that
-control authentication and destination hosts. The template shell-script
-`setenv-template.sh` is a guide to what you need. Copy this to `setenv.sh`,
-edit it, and use that to conveniently set many of the variables for the tools: -
+The tools utilise the Pyhon client's `Environment` module, which expects
+you to create an `Envrionments` file - a YAML file that defines the
+variables used to connect to the corresponding installation. The environments
+file (typically `~/.squonk2/environmemnts`) allows you to creat variables
+for multiple installations identified by name.
 
-    source setenv.sh
+See the **Environment module** section of the [Squonk2 Python Client].
 
 Using a python 3 virtual environment install the project requirements
 and then run the appropriate tool: -
@@ -26,14 +27,14 @@ and then run the appropriate tool: -
     pip install --upgrade pip
     pip install -r requirements.txt
 
-    ./tools/delete-test-projects.py
+    ./tools/delete-test-projects.py dls-test
 
 As a general style any tools that have destructive actions rely on the use of
 a `--do-it` option to prevent any accidental damage. Therefore, to _actually_
 delete Data Manager projects add `--do-it` to the `delete-test-projects`
 command: -
 
-    ./tools/delete-test-projects.py --do-it
+    ./tools/delete-test-projects.py dls-test --do-it
 
 All test tools use `argparse` so adding `--help` to the command will
 display the tool's help.
@@ -45,6 +46,8 @@ You should find the following tools in this repository: -
 - `delete-all-instances`
 - `delete-old-instances`
 - `delete-test-projects`
+- `load-er`
+- `save-er`
 
 ---
 

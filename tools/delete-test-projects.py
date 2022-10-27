@@ -7,26 +7,27 @@ import argparse
 from typing import Any, Dict, List, Optional
 import urllib3
 
-from common import Env, get_env, TEST_UNIT, TEST_USER_NAMES
-
 from squonk2.auth import Auth
 from squonk2.dm_api import DmApi, DmApiRv
+from squonk2.environment import Environment
+
+from common import TEST_UNIT, TEST_USER_NAMES
 
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
 
 def main(c_args: argparse.Namespace) -> None:
-    """Main function."""
-    env: Optional[Env] = get_env()
-    if not env:
-        return
+
+    _ = Environment.load()
+    env: Environment = Environment(c_args.environment)
+    DmApi.set_api_url(env.dm_api)
 
     token: str = Auth.get_access_token(
         keycloak_url=env.keycloak_url,
         keycloak_realm=env.keycloak_realm,
         keycloak_client_id=env.keycloak_dm_client_id,
-        username=env.keycloak_user,
-        password=env.keycloak_user_password,
+        username=env.admin_user,
+        password=env.admin_password,
     )
 
     ret_val: DmApiRv = DmApi.get_available_projects(token)
@@ -85,6 +86,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(
         description="Delete all Projects owned by test users"
     )
+    parser.add_argument('environment', type=str, help='The environment name')
     parser.add_argument(
         "--do-it",
         help="Set to actually delete, if not set the projects are listed",

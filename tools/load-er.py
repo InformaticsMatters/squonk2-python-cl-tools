@@ -10,9 +10,8 @@ import urllib3
 from rich.console import Console
 from squonk2.auth import Auth
 from squonk2.dm_api import DmApi, DmApiRv
+from squonk2.environment import Environment
 import yaml
-
-from common import Env, get_env
 
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
@@ -22,16 +21,16 @@ def main(c_args: argparse.Namespace) -> None:
 
     console = Console()
 
-    env: Optional[Env] = get_env()
-    if not env:
-        return
+    _ = Environment.load()
+    env: Environment = Environment(c_args.environment)
+    DmApi.set_api_url(env.dm_api)
 
     token: str = Auth.get_access_token(
         keycloak_url=env.keycloak_url,
         keycloak_realm=env.keycloak_realm,
         keycloak_client_id=env.keycloak_dm_client_id,
-        username=env.keycloak_user,
-        password=env.keycloak_user_password,
+        username=env.admin_user,
+        password=env.admin_password,
     )
 
     # Just read the list from the chosen file
@@ -56,6 +55,7 @@ if __name__ == "__main__":
         prog="load-er",
         description="Loads exchange rates (from a YAML file)"
     )
+    parser.add_argument('environment', type=str, help='The environment name')
     parser.add_argument('file', type=str, help='The source file')
     args: argparse.Namespace = parser.parse_args()
 
