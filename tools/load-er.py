@@ -33,8 +33,12 @@ def main(c_args: argparse.Namespace) -> None:
         password=env.admin_password,
     )
 
+    filename: str = c_args.file
+    if not filename.endswith('.yaml'):
+        filename += '.yaml'
+
     # Just read the list from the chosen file
-    file_content: str = Path(c_args.file).read_text(encoding='utf8')
+    file_content: str = Path(filename).read_text(encoding='utf8')
     rates: List[Dict[str, Any]] = yaml.load(file_content, Loader=yaml.FullLoader)
     er_rv: DmApiRv = DmApi.set_job_exchange_rates(token, rates=rates)
     if not er_rv.success:

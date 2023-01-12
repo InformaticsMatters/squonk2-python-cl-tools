@@ -32,7 +32,6 @@ def main(c_args: argparse.Namespace) -> None:
         username=env.admin_user,
         password=env.admin_password,
     )
-    console.log(token)
 
     er_rv: DmApiRv = DmApi.get_job_exchange_rates(token)
     if not er_rv.success:
