@@ -3,3 +3,4 @@ venv/
 **/__pycache__/
 setenv.sh
 *.yaml
+**/.DS_Store
