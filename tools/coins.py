@@ -93,8 +93,8 @@ def main(c_args: argparse.Namespace) -> None:
     invoice: Dict[str, Any] = {
         "Product": product_id,
         "Product Name": product_name,
-        "Claim ID": pc_rv.msg.get("claim_id", "Unclaimed"),
-        "Claim Name": pc_rv.msg.get("claim_name", "Undefined"),
+        "Claim": (p_rv.msg["product"].get("claim", {}).get("id", "-"),
+                  p_rv.msg["product"].get("claim", {}).get("name", "-"),),
         "Allowance": str(allowance),
         "Allowance Multiplier": str(allowance_multiplier),
         "Limit": str(limit),
