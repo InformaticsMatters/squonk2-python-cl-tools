@@ -91,10 +91,13 @@ def main(c_args: argparse.Namespace) -> None:
             num_processing_charges += 1
 
     invoice: Dict[str, Any] = {
-        "Product": product_id,
-        "Product Name": product_name,
-        "Claim": (p_rv.msg["product"].get("claim", {}).get("id", "-"),
-                  p_rv.msg["product"].get("claim", {}).get("name", "-"),),
+        "Product": (product_name, product_id),
+        "Unit": (p_rv.msg["product"]["unit"]["name"],
+                 p_rv.msg["product"]["unit"]["id"]),
+        "Organisation": (p_rv.msg["product"]["organisation"]["name"],
+                         p_rv.msg["product"]["organisation"]["id"]),
+        "Claim": (p_rv.msg["product"].get("claim", {}).get("name", "-"),
+                  p_rv.msg["product"].get("claim", {}).get("id", "-")),
         "Allowance": str(allowance),
         "Allowance Multiplier": str(allowance_multiplier),
         "Limit": str(limit),
