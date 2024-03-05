@@ -36,6 +36,9 @@ def main(c_args: argparse.Namespace) -> None:
         username=env.admin_user,
         password=env.admin_password,
     )
+    if not token:
+        console.log(f"[bold red]ERROR[/bold red] Failed to get token")
+        sys.exit(1)
 
     # Get the product details.
     # This gives us the product's allowance, limit and overspend multipliers

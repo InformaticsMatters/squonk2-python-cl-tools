@@ -32,6 +32,9 @@ def main(c_args: argparse.Namespace, filename: StopIteration) -> None:
         username=env.admin_user,
         password=env.admin_password,
     )
+    if not token:
+        print("Failed to get token")
+        sys.exit(1)
 
     # Just read the list from the chosen file
     file_content: str = Path(filename).read_text(encoding='utf8')
