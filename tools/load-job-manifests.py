@@ -4,7 +4,7 @@ The file is simply a list of manifests that have a `url`, optional `header`,
 and `params` (both of which are expected to be JSON strings of keys and values).
 """
 import argparse
-from pathlib import
+from pathlib import Path
 import sys
 from typing import Any, Dict, List
 import urllib3
