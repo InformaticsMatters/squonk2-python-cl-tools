@@ -16,7 +16,7 @@ import yaml
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
 
-def main(c_args: argparse.Namespace, filename: StopIteration) -> None:
+def main(c_args: argparse.Namespace, filename: str) -> None:
     """Main function."""
 
     console = Console()
