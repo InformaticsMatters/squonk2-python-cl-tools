@@ -92,8 +92,9 @@ def main(c_args: argparse.Namespace, filename: str) -> None:
     if not num_rates and not num_rates_failed:
         console.log('Loaded [bold red1]nothing[/bold red1]')
 
-    # Error states
-    if num_rates_failed or not num_rates and not num_rates_failed:
+    # Error if nothing was loaded.
+    # Errors or jobs without rates are not considered an error
+    if num_rates == 0:
         sys.exit(1)
 
 
