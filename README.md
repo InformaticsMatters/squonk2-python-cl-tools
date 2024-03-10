@@ -47,7 +47,6 @@ You should find the following tools in this repository: -
 - `delete-all-instances`
 - `delete-old-instances`
 - `delete-test-projects`
-- `job-exchange-rate`
 - `list-environments`
 - `load-er`
 - `load-job-manifests`
