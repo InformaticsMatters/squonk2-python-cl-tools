@@ -6,6 +6,7 @@ from collections import namedtuple
 from decimal import Decimal
 import sys
 from typing import Any, Dict, Optional
+from attr import dataclass
 import urllib3
 
 from rich.pretty import pprint
@@ -16,8 +17,12 @@ from squonk2.environment import Environment
 
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
-AdjustedCoins: namedtuple = namedtuple("AdjustedCoins",
-                                       ["coins", "fc", "ac", "aac"])
+@dataclass
+class AdjustedCoins:
+    coins: Decimal
+    fc: Decimal
+    ac: Decimal
+    aac: Decimal
 
 
 def main(c_args: argparse.Namespace) -> None:
@@ -37,7 +42,7 @@ def main(c_args: argparse.Namespace) -> None:
         password=env.admin_password,
     )
     if not token:
-        console.log(f"[bold red]ERROR[/bold red] Failed to get token")
+        console.log("[bold red]ERROR[/bold red] Failed to get token")
         sys.exit(1)
 
     # Get the product details.
@@ -131,27 +136,28 @@ def main(c_args: argparse.Namespace) -> None:
         "Coins (Adjusted)": f"{ac.fc} + {ac.aac} = {ac.coins}",
     }
 
-    additional_coins: Decimal = total_uncommitted_processing_coins + burn_rate * remaining_days
+    burn_rate_contribution: Decimal = burn_rate * remaining_days
+    additional_coins: Decimal = total_uncommitted_processing_coins + burn_rate_contribution
     predicted_total_coins: Decimal = total_coins
     zero: Decimal = Decimal()
-    if remaining_days > 0:
-        if burn_rate > zero:
+    if remaining_days > 0 and burn_rate > zero:
 
-            predicted_total_coins += additional_coins
-            p_ac: AdjustedCoins = _calculate_adjusted_coins(
-                predicted_total_coins,
-                allowance,
-                allowance_multiplier)
+        predicted_total_coins += additional_coins
+        p_ac: AdjustedCoins = _calculate_adjusted_coins(
+            predicted_total_coins,
+            allowance,
+            allowance_multiplier)
 
-            invoice["Prediction"] = {
-                "Coins (Burn Rate)": str(burn_rate),
-                "Coins (Additional Spend)": f"{total_uncommitted_processing_coins} + {remaining_days} x {burn_rate} = {additional_coins}",
-                "Coins (Total Raw)": f"{total_coins} + {additional_coins} = {predicted_total_coins}",
-                "Coins (Penalty Free)": str(p_ac.fc),
-                "Coins (In Allowance Band)": str(p_ac.ac),
-                "Coins (Allowance Charge)": f"{p_ac.ac} x {allowance_multiplier} = {p_ac.aac}",
-                "Coins (Adjusted)": f"{p_ac.fc} + {p_ac.aac} = {p_ac.coins}",
-            }
+        invoice["Prediction"] = {
+            "Coins (Burn Rate)": str(burn_rate),
+            "Coins (Burn Rate Contribution)": f"{remaining_days} x {burn_rate} = {burn_rate_contribution}",
+            "Coins (Additional Spend)": f"{total_uncommitted_processing_coins} + {burn_rate_contribution} = {additional_coins}",
+            "Coins (Total Raw)": f"{total_coins} + {additional_coins} = {predicted_total_coins}",
+            "Coins (Penalty Free)": str(p_ac.fc),
+            "Coins (In Allowance Band)": str(p_ac.ac),
+            "Coins (Allowance Charge)": f"{p_ac.ac} x {allowance_multiplier} = {p_ac.aac}",
+            "Coins (Adjusted)": f"{p_ac.fc} + {p_ac.aac} = {p_ac.coins}",
+        }
 
     # Now just pre-tty-print the invoice
     pprint(invoice)
