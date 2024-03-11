@@ -158,7 +158,7 @@ def main(c_args: argparse.Namespace) -> None:
 
         invoice["Prediction"] = {
             "Coins (Burn Rate)": str(burn_rate),
-            "Coins (Burn Rate Contribution)": f"{remaining_days} x {burn_rate} = {burn_rate_contribution}",
+            "Coins (Expected Burn Rate Contribution)": f"{remaining_days} x {burn_rate} = {burn_rate_contribution}",
             "Coins (Additional Spend)": f"{total_uncommitted_processing_coins} + {burn_rate_contribution} = {additional_coins}",
             "Coins (Total Raw)": f"{total_coins} + {additional_coins} = {predicted_total_coins}",
             "Coins (Penalty Free)": str(p_ac.fc),
@@ -176,9 +176,15 @@ def main(c_args: argparse.Namespace) -> None:
     console.log(f"Product response billing prediction is {product_response_billing_prediction}")
 
     if calculated_billing_prediction == product_response_billing_prediction:
-        console.log(":white_check_mark: CORRECT - Billing predictions match")
+        console.log(":white_check_mark: CORRECT - Predictions match")
     else:
-        console.log(":cross_mark: ERROR - Billing predictions do not match")
+        discrepancy: Decimal = abs(calculated_billing_prediction - product_response_billing_prediction)
+        if calculated_billing_prediction > product_response_billing_prediction:
+            who_is_higher: str = "Calculated"
+        else:
+            who_is_higher: str = "Product response"
+        console.log(":cross_mark: ERROR - Predictions do not match.")
+        console.log(f"There's a discrepancy of {discrepancy} and the {who_is_higher} value is higher.")
         sys.exit(1)
 
 
