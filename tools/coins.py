@@ -3,6 +3,7 @@
 """
 import argparse
 from collections import namedtuple
+import decimal
 from decimal import Decimal
 import sys
 from typing import Any, Dict, Optional
@@ -62,6 +63,11 @@ def main(c_args: argparse.Namespace) -> None:
     limit: Decimal = Decimal(p_rv.msg["product"]["coins"]["limit"])
 
     remaining_days: int = p_rv.msg["product"]["coins"]["remaining_days"]
+
+    # What's the 'billing prediction' in the /product response?
+    # We'll compare this later to ensure it matches what we find
+    # when we calculate the cost to the user using the product charges.
+    product_response_billing_prediction: Decimal = round(Decimal(p_rv.msg["product"]["coins"]["billing_prediction"]), 2)
 
     # Get the product's charges...
     pc_rv: AsApiRv = AsApi.get_product_charges(token, product_id=args.product)
@@ -140,6 +146,8 @@ def main(c_args: argparse.Namespace) -> None:
     additional_coins: Decimal = total_uncommitted_processing_coins + burn_rate_contribution
     predicted_total_coins: Decimal = total_coins
     zero: Decimal = Decimal()
+    calculated_billing_prediction: Decimal = Decimal()
+
     if remaining_days > 0 and burn_rate > zero:
 
         predicted_total_coins += additional_coins
@@ -159,8 +167,19 @@ def main(c_args: argparse.Namespace) -> None:
             "Coins (Adjusted)": f"{p_ac.fc} + {p_ac.aac} = {p_ac.coins}",
         }
 
+        calculated_billing_prediction = p_ac.coins
+
     # Now just pre-tty-print the invoice
     pprint(invoice)
+
+    console.log(f"Calculated billing prediction is {calculated_billing_prediction}")
+    console.log(f"Product response billing prediction is {product_response_billing_prediction}")
+
+    if calculated_billing_prediction == product_response_billing_prediction:
+        console.log(":white_check_mark: CORRECT - Billing predictions match")
+    else:
+        console.log(":cross_mark: ERROR - Billing predictions do not match")
+        sys.exit(1)
 
 
 def _calculate_adjusted_coins(total_coins: Decimal,
