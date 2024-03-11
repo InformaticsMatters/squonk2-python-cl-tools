@@ -86,7 +86,7 @@ def main(c_args: argparse.Namespace) -> None:
     if "items" in pc_rv.msg["storage_charges"]:
         for item in pc_rv.msg["storage_charges"]["items"]:
             if "current_bytes" in item["additional_data"]:
-                burn_rate = Decimal(item["coins"])
+                burn_rate = Decimal(item["burn_rate"])
             else:
                 total_storage_coins += Decimal(item["coins"])
                 num_storage_charges += 1
