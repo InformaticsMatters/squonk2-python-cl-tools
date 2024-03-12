@@ -79,16 +79,16 @@ def main(c_args: argparse.Namespace) -> None:
         pprint(pc_rv.msg)
 
     # Accumulate all the storage costs
-    # (excluding the current which will be interpreted as the "burn rate")
+    # (the current record wil be used to set the future the "burn rate")
     num_storage_charges: int = 0
     burn_rate: Decimal = Decimal()
     total_storage_coins: Decimal = Decimal()
     if "items" in pc_rv.msg["storage_charges"]:
         for item in pc_rv.msg["storage_charges"]["items"]:
+            total_storage_coins += Decimal(item["coins"])
             if "current_bytes" in item["additional_data"]:
                 burn_rate = Decimal(item["burn_rate"])
             else:
-                total_storage_coins += Decimal(item["coins"])
                 num_storage_charges += 1
 
     # Accumulate all the processing costs
@@ -142,7 +142,14 @@ def main(c_args: argparse.Namespace) -> None:
         "Coins (Adjusted)": f"{ac.fc} + {ac.aac} = {ac.coins}",
     }
 
-    burn_rate_contribution: Decimal = burn_rate * remaining_days
+    # We've accumulated today's storage costs (based on the current 'peak'),
+    # so we can only predict further storage costs if there's more than
+    # 1 day left until the billing day. And that 'burn rate' is based on today's
+    # 'current' storage, not its 'peak'.
+    burn_rate_contribution: Decimal = Decimal()
+    burn_rate_days: int = max(remaining_days - 1, 0)
+    if burn_rate_days > 0:
+        burn_rate_contribution = burn_rate * burn_rate_days
     additional_coins: Decimal = total_uncommitted_processing_coins + burn_rate_contribution
     predicted_total_coins: Decimal = total_coins
     zero: Decimal = Decimal()
@@ -158,7 +165,7 @@ def main(c_args: argparse.Namespace) -> None:
 
         invoice["Prediction"] = {
             "Coins (Burn Rate)": str(burn_rate),
-            "Coins (Expected Burn Rate Contribution)": f"{remaining_days} x {burn_rate} = {burn_rate_contribution}",
+            "Coins (Expected Burn Rate Contribution)": f"{burn_rate_days} x {burn_rate} = {burn_rate_contribution}",
             "Coins (Additional Spend)": f"{total_uncommitted_processing_coins} + {burn_rate_contribution} = {additional_coins}",
             "Coins (Total Raw)": f"{total_coins} + {additional_coins} = {predicted_total_coins}",
             "Coins (Penalty Free)": str(p_ac.fc),
