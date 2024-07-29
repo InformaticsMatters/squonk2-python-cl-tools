@@ -7,6 +7,7 @@ earliest and latest dates the Job was executed.
 import argparse
 from dataclasses import dataclass
 from datetime import datetime
+from decimal import Decimal
 import sys
 from typing import Any, Dict, List
 import urllib3
@@ -22,11 +23,13 @@ urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 @dataclass
 class JobStats:
     count: int
+    coins: Decimal
     earliest: datetime
     latest: datetime
 
     def __repr__(self) -> str:
-        return f'{self.count} {self.earliest.date()}/{self.latest.date()}'
+        i_str = 'Instance' if self.count == 1 else 'Instances'
+        return f'{self.coins} Coins {self.count} {i_str} From {self.earliest.date()} Until {self.latest.date()}'
 
 
 def main(c_args: argparse.Namespace) -> None:
@@ -67,6 +70,7 @@ def main(c_args: argparse.Namespace) -> None:
                 if "processing_charges" in c_rv.msg:
                     for processing_charge in c_rv.msg["processing_charges"]:
                         if "additional_data" in processing_charge["charge"]:
+                            coins: Decimal = Decimal(processing_charge["charge"]["coins"])
                             timestamp: datetime = datetime.fromisoformat(processing_charge["charge"]["timestamp"])
                             ad: Dict[str, Any] = processing_charge["charge"]["additional_data"]
                             if "job_collection" in ad:
@@ -74,13 +78,14 @@ def main(c_args: argparse.Namespace) -> None:
                                 if job_str in org_jobs:
                                     job_stats = org_jobs[job_str]
                                     job_stats.count += 1
+                                    job_stats.coins += coins
                                     if timestamp < job_stats.earliest:
                                         job_stats.earliest = timestamp
                                     elif timestamp > job_stats.latest:
                                         job_stats.latest = timestamp
                                     org_jobs[job_str] = job_stats
                                 else:
-                                    org_jobs[job_str] = JobStats(count=1, earliest=timestamp, latest=timestamp)
+                                    org_jobs[job_str] = JobStats(count=1, coins=coins, earliest=timestamp, latest=timestamp)
     jobs: List[str] = org_jobs.keys()
     for job in sorted(jobs):
         print(f'{job}: ({org_jobs[job]})')
