@@ -5,7 +5,7 @@ import argparse
 from collections import namedtuple
 from decimal import Decimal
 import sys
-from typing import Any, Dict, Optional
+from typing import Any, Dict
 import urllib3
 
 from rich.pretty import pprint
@@ -56,7 +56,7 @@ def main(c_args: argparse.Namespace) -> None:
     remaining_days: int = p_rv.msg["product"]["coins"]["remaining_days"]
 
     # Get the product's charges...
-    pc_rv: AsApiRv = AsApi.get_product_charges(token, product_id=args.product)
+    pc_rv: AsApiRv = AsApi.get_product_charges(token, product_id=args.product, pbp=args.pbp)
     if not pc_rv.success:
         console.log(pc_rv.msg)
         console.log(f"[bold red]ERROR[/bold red] Failed to get [blue]{args.product}[/blue]")
@@ -192,10 +192,19 @@ if __name__ == "__main__":
     parser.add_argument('environment', type=str, help='The environment name')
     parser.add_argument('product', type=str, help='The Product UUID')
     parser.add_argument(
+        '--pbp',
+        help='The prior billing period (default is 0, current)',
+        type=int,
+        default=0,
+    )
+    parser.add_argument(
         '--verbose',
         help='Set to print extra information',
         action='store_true',
     )
     args: argparse.Namespace = parser.parse_args()
+
+    if args.pbp > 0:
+        parser.error("The prior billing period must be less than or equal to 0")
 
     main(args)
