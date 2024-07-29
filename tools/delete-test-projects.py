@@ -4,6 +4,7 @@
 """Deletes projects in the DM created by a built-in test user.
 """
 import argparse
+import sys
 from typing import Any, Dict, List, Optional
 import urllib3
 
@@ -29,6 +30,9 @@ def main(c_args: argparse.Namespace) -> None:
         username=env.admin_user,
         password=env.admin_password,
     )
+    if not token:
+        print("Failed to get token")
+        sys.exit(1)
 
     ret_val: DmApiRv = DmApi.get_available_projects(token)
     assert ret_val.success

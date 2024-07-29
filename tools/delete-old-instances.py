@@ -8,6 +8,7 @@ and then removes instances that are found. The assumption here
 is that the user has admin rights.
 """
 import argparse
+import sys
 from datetime import datetime, timedelta
 from typing import List, Optional, Tuple
 import urllib3
@@ -33,10 +34,15 @@ def main(c_args: argparse.Namespace) -> None:
         username=env.admin_user,
         password=env.admin_password,
     )
+    if not token:
+        print("Failed to get token")
+        sys.exit(1)
 
     # To see everything we need to become admin...
     rv: DmApiRv = DmApi.set_admin_state(token, admin=True)
-    assert rv.success
+    if not rv.success:
+        print("Failed to set admin state")
+        sys.exit(1)
 
     # Max age?
     max_stopped_age: timedelta = timedelta(hours=args.age)
@@ -76,7 +82,9 @@ def main(c_args: argparse.Namespace) -> None:
     # Revert to a non-admin state
     # To see everything we need to become admin...
     rv = DmApi.set_admin_state(token, admin=False)
-    assert rv.success
+    if not rv.success:
+        print("Failed to unset admin state")
+        sys.exit(1)
 
     print(f"Found {len(old_instances)}")
     print(f"Deleted {num_deleted}")

@@ -11,6 +11,7 @@ The utility is useful in clearing out Job Operator objects
 prior to a major upgrade.
 """
 import argparse
+import sys
 from typing import Dict, List, Optional, Tuple
 import urllib3
 
@@ -34,13 +35,18 @@ def main(c_args: argparse.Namespace) -> None:
         username=env.admin_user,
         password=env.admin_password,
     )
+    if not token:
+        print("Failed to get token")
+        sys.exit(1)
 
     # The collection of instances
     project_instances: Dict[str, List[Tuple[str, str]]] = {}
 
     # To see everything we need to become admin...
     rv: DmApiRv = DmApi.set_admin_state(token, admin=True)
-    assert rv.success
+    if not rv.success:
+        print("Failed to set admin state")
+        sys.exit(1)
 
     # Iterate through projects to get instances...
     num_instances: int = 0
@@ -82,7 +88,9 @@ def main(c_args: argparse.Namespace) -> None:
     # Revert to a non-admin state
     # To see everything we need to become admin...
     rv = DmApi.set_admin_state(token, admin=False)
-    assert rv.success
+    if not rv.success:
+        print("Failed to unset admin state")
+        sys.exit(1)
 
     print(f"Found {num_instances}")
     print(f"Deleted {num_deleted}")

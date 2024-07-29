@@ -16,7 +16,7 @@ import yaml
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
 
-def main(c_args: argparse.Namespace, filename: StopIteration) -> None:
+def main(c_args: argparse.Namespace, filename: str) -> None:
     """Main function."""
 
     console = Console()
@@ -32,6 +32,9 @@ def main(c_args: argparse.Namespace, filename: StopIteration) -> None:
         username=env.admin_user,
         password=env.admin_password,
     )
+    if not token:
+        print("Failed to get token")
+        sys.exit(1)
 
     # Just read the list from the chosen file
     file_content: str = Path(filename).read_text(encoding='utf8')
@@ -89,8 +92,9 @@ def main(c_args: argparse.Namespace, filename: StopIteration) -> None:
     if not num_rates and not num_rates_failed:
         console.log('Loaded [bold red1]nothing[/bold red1]')
 
-    # Error states
-    if num_rates_failed or not num_rates and not num_rates_failed:
+    # Error if nothing was loaded.
+    # Errors or jobs without rates are not considered an error
+    if num_rates == 0:
         sys.exit(1)
 
 

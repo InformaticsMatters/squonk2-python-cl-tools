@@ -13,10 +13,10 @@ set of examples so that users can create their own utilities.
 >   Most tools need to be executed by a user with admin privileges.
 
 ## Usage
-The tools utilise the Pyhon client's `Environment` module, which expects
+The tools utilise the Python client's `Environment` module, which expects
 you to create an `Envrionments` file - a YAML file that defines the
 variables used to connect to the corresponding installation. The environments
-file (typically `~/.squonk2/environmemnts`) allows you to creat variables
+file (typically `~/.squonk2/environmemnts`) allows you to create variables
 for multiple installations identified by name.
 
 See the **Environment module** section of the [Squonk2 Python Client].
@@ -43,11 +43,13 @@ display the tool's help.
 You should find the following tools in this repository: -
 
 - `coins`
+- `create-organisations-and-units`
 - `delete-all-instances`
 - `delete-old-instances`
 - `delete-test-projects`
 - `list-environments`
 - `load-er`
+- `load-job-manifests`
 - `save-er`
 
 ---

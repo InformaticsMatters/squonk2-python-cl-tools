@@ -3,9 +3,11 @@
 """
 import argparse
 from collections import namedtuple
+import decimal
 from decimal import Decimal
 import sys
-from typing import Any, Dict
+from typing import Any, Dict, Optional
+from attr import dataclass
 import urllib3
 
 from rich.pretty import pprint
@@ -16,8 +18,12 @@ from squonk2.environment import Environment
 
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
-AdjustedCoins: namedtuple = namedtuple("AdjustedCoins",
-                                       ["coins", "fc", "ac", "aac"])
+@dataclass
+class AdjustedCoins:
+    coins: Decimal
+    fc: Decimal
+    ac: Decimal
+    aac: Decimal
 
 
 def main(c_args: argparse.Namespace) -> None:
@@ -36,6 +42,9 @@ def main(c_args: argparse.Namespace) -> None:
         username=env.admin_user,
         password=env.admin_password,
     )
+    if not token:
+        console.log("[bold red]ERROR[/bold red] Failed to get token")
+        sys.exit(1)
 
     # Get the product details.
     # This gives us the product's allowance, limit and overspend multipliers
@@ -55,6 +64,11 @@ def main(c_args: argparse.Namespace) -> None:
 
     remaining_days: int = p_rv.msg["product"]["coins"]["remaining_days"]
 
+    # What's the 'billing prediction' in the /product response?
+    # We'll compare this later to ensure it matches what we find
+    # when we calculate the cost to the user using the product charges.
+    product_response_billing_prediction: Decimal = round(Decimal(p_rv.msg["product"]["coins"]["billing_prediction"]), 2)
+
     # Get the product's charges...
     pc_rv: AsApiRv = AsApi.get_product_charges(token, product_id=args.product, pbp=args.pbp)
     if not pc_rv.success:
@@ -65,16 +79,16 @@ def main(c_args: argparse.Namespace) -> None:
         pprint(pc_rv.msg)
 
     # Accumulate all the storage costs
-    # (excluding the current which will be interpreted as the "burn rate")
+    # (the current record wil be used to set the future the "burn rate")
     num_storage_charges: int = 0
     burn_rate: Decimal = Decimal()
     total_storage_coins: Decimal = Decimal()
     if "items" in pc_rv.msg["storage_charges"]:
         for item in pc_rv.msg["storage_charges"]["items"]:
+            total_storage_coins += Decimal(item["coins"])
             if "current_bytes" in item["additional_data"]:
-                burn_rate = Decimal(item["coins"])
+                burn_rate = Decimal(item["burn_rate"])
             else:
-                total_storage_coins += Decimal(item["coins"])
                 num_storage_charges += 1
 
     # Accumulate all the processing costs
@@ -128,30 +142,57 @@ def main(c_args: argparse.Namespace) -> None:
         "Coins (Adjusted)": f"{ac.fc} + {ac.aac} = {ac.coins}",
     }
 
-    additional_coins: Decimal = total_uncommitted_processing_coins + burn_rate * remaining_days
+    # We've accumulated today's storage costs (based on the current 'peak'),
+    # so we can only predict further storage costs if there's more than
+    # 1 day left until the billing day. And that 'burn rate' is based on today's
+    # 'current' storage, not its 'peak'.
+    burn_rate_contribution: Decimal = Decimal()
+    burn_rate_days: int = max(remaining_days - 1, 0)
+    if burn_rate_days > 0:
+        burn_rate_contribution = burn_rate * burn_rate_days
+    additional_coins: Decimal = total_uncommitted_processing_coins + burn_rate_contribution
     predicted_total_coins: Decimal = total_coins
     zero: Decimal = Decimal()
-    if remaining_days > 0:
-        if burn_rate > zero:
+    calculated_billing_prediction: Decimal = Decimal()
 
-            predicted_total_coins += additional_coins
-            p_ac: AdjustedCoins = _calculate_adjusted_coins(
-                predicted_total_coins,
-                allowance,
-                allowance_multiplier)
+    if remaining_days > 0 and burn_rate > zero:
 
-            invoice["Prediction"] = {
-                "Coins (Burn Rate)": str(burn_rate),
-                "Coins (Additional Spend)": f"{total_uncommitted_processing_coins} + {remaining_days} x {burn_rate} = {additional_coins}",
-                "Coins (Total Raw)": f"{total_coins} + {additional_coins} = {predicted_total_coins}",
-                "Coins (Penalty Free)": str(p_ac.fc),
-                "Coins (In Allowance Band)": str(p_ac.ac),
-                "Coins (Allowance Charge)": f"{p_ac.ac} x {allowance_multiplier} = {p_ac.aac}",
-                "Coins (Adjusted)": f"{p_ac.fc} + {p_ac.aac} = {p_ac.coins}",
-            }
+        predicted_total_coins += additional_coins
+        p_ac: AdjustedCoins = _calculate_adjusted_coins(
+            predicted_total_coins,
+            allowance,
+            allowance_multiplier)
+
+        invoice["Prediction"] = {
+            "Coins (Burn Rate)": str(burn_rate),
+            "Coins (Expected Burn Rate Contribution)": f"{burn_rate_days} x {burn_rate} = {burn_rate_contribution}",
+            "Coins (Additional Spend)": f"{total_uncommitted_processing_coins} + {burn_rate_contribution} = {additional_coins}",
+            "Coins (Total Raw)": f"{total_coins} + {additional_coins} = {predicted_total_coins}",
+            "Coins (Penalty Free)": str(p_ac.fc),
+            "Coins (In Allowance Band)": str(p_ac.ac),
+            "Coins (Allowance Charge)": f"{p_ac.ac} x {allowance_multiplier} = {p_ac.aac}",
+            "Coins (Adjusted)": f"{p_ac.fc} + {p_ac.aac} = {p_ac.coins}",
+        }
+
+        calculated_billing_prediction = p_ac.coins
 
     # Now just pre-tty-print the invoice
     pprint(invoice)
+
+    console.log(f"Calculated billing prediction is {calculated_billing_prediction}")
+    console.log(f"Product response billing prediction is {product_response_billing_prediction}")
+
+    if calculated_billing_prediction == product_response_billing_prediction:
+        console.log(":white_check_mark: CORRECT - Predictions match")
+    else:
+        discrepancy: Decimal = abs(calculated_billing_prediction - product_response_billing_prediction)
+        if calculated_billing_prediction > product_response_billing_prediction:
+            who_is_higher: str = "Calculated"
+        else:
+            who_is_higher: str = "Product response"
+        console.log(":cross_mark: ERROR - Predictions do not match.")
+        console.log(f"There's a discrepancy of {discrepancy} and the {who_is_higher} value is higher.")
+        sys.exit(1)
 
 
 def _calculate_adjusted_coins(total_coins: Decimal,
