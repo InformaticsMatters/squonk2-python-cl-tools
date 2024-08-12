@@ -1,4 +1,4 @@
-im-squonk2-client >= 3.0.2, < 4.0.0
+im-squonk2-client >= 4.0.0, < 5.0.0
 python-dateutil == 2.9.0
 rich == 12.6.0
 pyyaml == 6.0.1
