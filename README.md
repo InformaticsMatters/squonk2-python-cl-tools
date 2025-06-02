@@ -14,9 +14,9 @@ set of examples so that users can create their own utilities.
 
 ## Usage
 The tools utilise the Python client's `Environment` module, which expects
-you to create an `Envrionments` file - a YAML file that defines the
+you to create an `Environments` file - a YAML file that defines the
 variables used to connect to the corresponding installation. The environments
-file (typically `~/.squonk2/environmemnts`) allows you to create variables
+file (typically `~/.squonk2/environments`) allows you to create variables
 for multiple installations identified by name.
 
 See the **Environment module** section of the [Squonk2 Python Client].
@@ -47,9 +47,12 @@ You should find the following tools in this repository: -
 - `delete-all-instances`
 - `delete-old-instances`
 - `delete-test-projects`
+- `get-job-executions`
+- `get-orgs-unit-products`
 - `list-environments`
 - `load-er`
 - `load-job-manifests`
+- `org-jobs`
 - `save-er`
 
 ---
